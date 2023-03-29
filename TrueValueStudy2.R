@@ -15,6 +15,7 @@
 #em=1
 #true marg RR = 0.25; true cond RR = 0.23;
 
+
 datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3,OR_WI=1,OR_WC=5,OR_H=1.5,em=0,cfV0=F,cfV1=F,return_full=F){
   set.seed(seed)
   
@@ -31,8 +32,7 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3
   Infec<-rbinom(prob=plogis(0.5*C-5+0.5*U1),size=1,n=popsize) #current prevalence around 0.007
   
   #Infected with COVID
-  Infec_COVID<- rbinom(prob=plogis( 1-log(OR_C)*V + -6 + C+ exp(C)+log(3)*U2*(1.5-V)-2*U1), size=1,n=popsize) #0.009
-  
+  Infec_COVID<- rbinom(prob=plogis( 1-log(OR_C)*V -6 + 2*C - 0.15*exp(C)+log(3)*U2*(1.5-V)-2*U1), size=1,n=popsize) #0.009
   #symptoms based on infection
   #can come from either or both infections, if present
   W=rep(0,popsize)
@@ -58,7 +58,10 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3
 }
 
 
-dat<-datagen(ssize=5000, em=1)
+
+
+
+dat<-datagen(ssize=500, em=0)
 
 
 #true marginal RR
@@ -68,7 +71,7 @@ for (j in 1:50){
   datfull0<-datagen(cfV0=T,return_full=T)
   orvect[j]<-mean(datfull1$H*datfull1$Infec_COVID)/mean(datfull0$H*datfull0$Infec_COVID)
 }
-(psi = mean(orvect)) #0.04
+(psi = mean(orvect)) #0.0469
 hist(orvect)
 
 #true marginal RR for Infec_COVID
