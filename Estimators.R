@@ -92,7 +92,7 @@ CI1=CI2=CI3=CI4=CI5=c(0,0)
 #seeds<-read.table("seeds.txt", header=F)$V1
 seeds <- seq(1, 1000, 1)
 for (i in 1:1000){
-  TNDdf_train <-datagen(ssize=5000, em=1)
+  TNDdf_train <-datagen(ssize=5000, em=3)
   #######################################################
   #IPW with controls to fit g
   est1<-mod_IPW(TNDdf_train)
@@ -109,5 +109,16 @@ for (i in 1:1000){
   est4 <- mod_EIF(TNDdf_train, deWet = "PS")
   est5 <- mod_EIF(TNDdf_train, deWet = "Out")
   est6 <- mod_EIF2(TNDdf_train)
-  write(c(i,est1,est2,est3,est4,est5,est6),file="TNDStudy1test2.txt",ncolumns=10,append=T)
+  write(c(i,est1,est2,est3,est4,est5,est6),file="TNDStudy1earth5000_em3.txt",ncolumns=10,append=T)
 }
+
+res1<-read.table("TNDStudy1Hal2000.txt",header=F)
+res1 <- na.omit(res1)
+head(res1)
+dim(res1)
+#em=1 true mRR = 0.04363 ;
+colnames(res1) <- c("i", "IPW", "out-PS","out-Out", "EIF-PS", "EIF-Out", "EIF2")
+#mRR.em3 = 0.159513;
+mRR.em1 = 0.04363
+colMeans(res1- mRR.em1)
+apply(res1- mRR, 2, sd)
