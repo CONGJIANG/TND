@@ -1,6 +1,10 @@
-require("dplyr")
-# read TND data, for example, ... is the Path you store the TND data, and TNDdat.tex is the name (change it)
-# The data need to be cleaned: the structure is like Y is outcome, V is vaccination status, and other columns are covariates that we will use to adjust. 
+## Preparation
+#Before running this VE analyse code,  the TND dataset should be well prepared: 
+#Outcome is binary (SARS-Cov-2 infection or not), Covid19 Vaccination status is binary, e.g., unvaccinated (V=0) vs fully vaccinated + 14 days (V=1)
+#and covariates that we will use to adjust is selected, such as ages group (e.g., < 18, 18~60, or >=60), gender, race, the calendar month of a test-positive subjects' first positive COVID test, etc. 
+require("dplyr") # to use select function
+# read TND data, for example, ... is the Path you store the TND data, and TNDdat.tex is the name (change it!)
+# The data need to be cleaned: the structure is like Y is the outcome, V is vaccination status, and other columns are covariates we will use to adjust. 
 TNDdat <-read.table(".../TNDdat.txt",header=F)
 head(TNDdat)
 # isolate the names of baseline covariates
@@ -10,8 +14,8 @@ baselinevars
 # adjust the exposure variable (primary interest) + covariates
 # fit mu model
 mu.formula <- as.formula(paste("Y~ V +", 
-                                paste(baselinevars, 
-                                      collapse = "+")))
+                               paste(baselinevars, 
+                                     collapse = "+")))
 
 mu.fit <- glm(mu.formula,family="binomial", data=TNDdat)
 coef(mu.fit)
@@ -19,8 +23,8 @@ mu1 <- predict(mu.fit,newdata=as.data.frame(cbind(V=1,select(TNDdat, !c(V,Y)))),
 mu0 <- predict(mu.fit,newdata=as.data.frame(cbind(V=0,select(TNDdat, !c(V,Y)))),type="response")
 # fit m model
 m.formula <- as.formula(paste("Y~", 
-                               paste(baselinevars, 
-                                     collapse = "+")))
+                              paste(baselinevars, 
+                                    collapse = "+")))
 m.fit <- glm(mu.formula,family="binomial", data=TNDdat)
 coef(m.fit)
 m <- predict(m.fit,type="response")
@@ -80,3 +84,7 @@ A.1 <- (1 - TNDdat$Y)*(TNDdat$V - res$g1)/(res$g1* (1 -res$mu1))
 A.0 <- (1 - TNDdat$Y)*((1-TNDdat$V) - res$g0)/(res$g0* (1 - res$mu0))
 mod_eif2 <- mean(TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)/mean(TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)
 mod_eif2
+
+# outcome regression
+mod_OR <- mean(res$mu1 * res$w1)/mean(res$mu0 * res$w0)
+mod_OR
