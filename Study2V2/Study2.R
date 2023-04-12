@@ -68,7 +68,7 @@ mod_IPW_c <- function(dat){
   TNDmod_g_col<-glm(V~C + sin(C),family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)))
   ipw <- ifelse(dat$V == 1, 1/g1_cont, 1/(1 - g1_cont))
-  modY.ipw <- glm(Y ~ V, family=binomial(), weights = ipw, data=dat)
+  modY.ipw <- glm(Y ~ V, family=binomial(link = "log"), weights = ipw, data=dat)
   est <- exp(modY.ipw$coefficients[2])
   se <- vcovHC(modY.ipw)[2,2]
   return(list(est = est, CI = c(est - 1.96*se/sqrt(nrow(dat)), est + 1.96*se/sqrt(nrow(dat))) ))
@@ -78,7 +78,7 @@ mod_IPW_w <- function(dat){
   TNDmod_g_col<-glm(V~C,family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)))
   ipw <- ifelse(dat$V == 1, 1/g1_cont, 1/(1 - g1_cont))
-  modY.ipw <- glm(Y ~ V, family=binomial(), weights = ipw, data=dat)
+  modY.ipw <- glm(Y ~ V, family=binomial(link = "log"), weights = ipw, data=dat)
   est <- exp(modY.ipw$coefficients[2])
   se <- vcovHC(modY.ipw)[2,2]
   return(list(est = est, CI = c(est - 1.96*se/sqrt(nrow(dat)), est + 1.96*se/sqrt(nrow(dat))) ))
