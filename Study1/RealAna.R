@@ -80,7 +80,8 @@ modY.ipw <- glm(Y ~ V, family=binomial(link = "log"), weights = ipw, data=TNDdat
 # if does not work try:
 # modY.ipw <- glm(Y ~ V, family=binomial(), weights = ipw, data=TNDdat)
 (est.ipw <- exp(modY.ipw$coefficients[2]))
-(se.ipw <- vcovHC(modY.ipw)[2,2])
+se.ipw <- vcovHC(modY.ipw)[2,2]
+est.ipw; c(est.ipw - 1.96*se.ipw/sqrt(nrow(TNDdat)), est.ipw + 1.96*se.ipw/sqrt(nrow(TNDdat)))
 
 # proposed eif estimator
 A1 <- (1 - TNDdat$Y)*(TNDdat$V - res$g1)/(res$g1* res$m0)
