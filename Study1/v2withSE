@@ -5,7 +5,11 @@ mod_IPW<-function(TNDdf_train){
   gmodTND_cont<-mod_g_control(TNDdf_train)
   gTND_cont<-gmodTND_cont$g1_cont
   est=mean(TNDdf_train$Y*TNDdf_train$V/gTND_cont)/mean(TNDdf_train$Y*(1-TNDdf_train$V)/(1-gTND_cont))
-  return(est)
+  ipw <- ifelse(TNDdf_train$V == 1, 1/gTND_cont, 1/(gTND_cont))
+  modY.ipw <- glm(Y ~ V, family=binomial(), weights = ipw, data=TNDdf_train)
+  est.ipw <- exp(modY.ipw$coefficients[2])
+  se.ipw <- vcovHC(modY.ipw)[2,2]
+  return(list(est = est, CI = c(est - 1.96*se.ipw/sqrt(nrow(TNDdf_train)), est + 1.96*se.ipw/sqrt(nrow(TNDdf_train))) ))
 }
 mod_IPW(TNDdf_train)
 # Method 2: Outcome Regression
@@ -59,8 +63,7 @@ mod_eifsub <- function(TNDdf_train1, TNDdf_train2, deWet = c("PS", "Out")){
   var1 <- mean((TNDdf_train2$Y*TNDdf_train2$V/g1_v1 - Q1*A1)^2)/(mean(TNDdf_train2$Y*TNDdf_train2$V/g1_v1 - Q1*A1))^2
   var0 <- mean((TNDdf_train2$Y*(1-TNDdf_train2$V)/g1_v0 - Q0*A0)^2)/(mean(TNDdf_train2$Y*(1-TNDdf_train2$V)/g1_v0 - Q0*A0))^2
   selnRR <- sqrt(var1 + var0)
-  seRR <- exp(selnRR) - 1
-  return(list(est = est, se = seRR))
+  return(list(est = est, se = selnRR))
 }
 
 mod_EIF <- function(TNDdf_train, deWet = c("PS", "Out")){
@@ -72,9 +75,9 @@ mod_EIF <- function(TNDdf_train, deWet = c("PS", "Out")){
   res2<- mod_eifsub(TNDdf_train2, TNDdf_train1, deWet)
   est <- nrow(TNDdf_train1)*res1$est/nrow(TNDdf_train) + nrow(TNDdf_train2)*res2$est/nrow(TNDdf_train)
   se <- nrow(TNDdf_train1)*res1$se/nrow(TNDdf_train) + nrow(TNDdf_train2)*res2$se/nrow(TNDdf_train)
-  upper <- est + 1.96*se/sqrt(nrow(TNDdf_train))
-  lower <- est - 1.96*se/sqrt(nrow(TNDdf_train))
-  return(list(est = est, se = se, upper = upper, lower = lower))
+  upper <- est*exp(+ 1.96*se/sqrt(nrow(TNDdf_train)))
+  lower <- est*exp(- 1.96*se/sqrt(nrow(TNDdf_train)))
+  return(list(est = est, se = se, CI =c(lower, upper)) )
 }
 
 
@@ -96,8 +99,7 @@ mod_eifsub2 <- function(TNDdf_train1, TNDdf_train2, deWet = c("PS", "Out")){
   var1 <- mean((TNDdf_train2$Y*TNDdf_train2$V/g1_v1 - mu1*A1)^2)/(mean(TNDdf_train2$Y*TNDdf_train2$V/g1_v1 - mu1*A1))^2
   var0 <- mean((TNDdf_train2$Y*(1-TNDdf_train2$V)/g1_v0 - mu0*A0)^2)/(mean(TNDdf_train2$Y*(1-TNDdf_train2$V)/g1_v0 - mu0*A0))^2
   selnRR <- sqrt(var1 + var0)
-  seRR <- exp(selnRR) - 1
-  return(list(est = est, se = seRR))
+  return(list(est = est, se = selnRR))
 }
 
 mod_EIF2 <- function(TNDdf_train){
@@ -110,9 +112,9 @@ mod_EIF2 <- function(TNDdf_train){
   res2<- mod_eifsub2(TNDdf_train2, TNDdf_train1)
   est <- nrow(TNDdf_train1)*res1$est/nrow(TNDdf_train) + nrow(TNDdf_train2)*res2$est/nrow(TNDdf_train)
   se <- nrow(TNDdf_train1)*res1$se/nrow(TNDdf_train) + nrow(TNDdf_train2)*res2$se/nrow(TNDdf_train)
-  upper <- est + 1.96*se/sqrt(nrow(TNDdf_train))
-  lower <- est - 1.96*se/sqrt(nrow(TNDdf_train))
-  return(list(est = est, se = se, upper = upper, lower = lower))
+  upper <- est*exp( + 1.96*se/sqrt(nrow(TNDdf_train)) )
+  lower <- est*exp( - 1.96*se/sqrt(nrow(TNDdf_train)) )
+  return(list(est = est, se = se, CI =c(lower, upper)) )
 }
 
 mod_EIF2(TNDdf_train)
@@ -124,10 +126,9 @@ for (i in 1:1000){
   TNDdf_train <-datagen(ssize=2000, em=3)
   #######################################################
   #IPW with controls to fit g
-  est1<-mod_IPW(TNDdf_train)
-  #bsobj<-bootstrap(dat,nbs=500,method1=mod_IPW,method2=mod_IPW_all)
-  #var2<-bsobj$bs_var1
-  #CI2<-bsobj$CI1
+  est.1<-mod_IPW(TNDdf_train)
+  est1<- est.1$est
+  CI1<- est.1$CI
   #######################################################
   # Outcome regression with propensity ratio
   est2<-mod_OutReg(TNDdf_train, deWet = "PS")$est
@@ -135,13 +136,19 @@ for (i in 1:1000){
   est3<-mod_OutReg(TNDdf_train, deWet = "Out")$est
   #######################################################
   ## Method 3: The proposed estimator that is based on the EIF
-  est4 <- mod_EIF(TNDdf_train, deWet = "PS")
-  est5 <- mod_EIF(TNDdf_train, deWet = "Out")
-  est6 <- mod_EIF2(TNDdf_train)
-  write(c(i,est1,est2,est3,est4,est5,est6),file="TNDStudy1hal2000_em3.txt",ncolumns=10,append=T)
+  est.4 <- mod_EIF(TNDdf_train, deWet = "PS")
+  est4<- est.4$est
+  CI2<- est.4$CI
+  est.5 <- mod_EIF(TNDdf_train, deWet = "Out")
+  est5<- est.5$est
+  CI3<- est.5$CI
+  est.6 <- mod_EIF2(TNDdf_train)
+  est6<- est.6$est
+  CI4<- est.6$CI
+  write(c(i,est1,CI1,est2,est3,est4,CI2,est5,CI3,est6,CI4),file="TNDStudy1hal2000_em3.txt",ncolumns=10,append=T)
 }
 
-res1<-read.table("/Users/congjiang/Downloads/TNDStudy1hal2000.txt",header=F)
+res1<-read.table("TNDStudy1hal2000.txt",header=F)
 res1 <- na.omit(res1)
 head(res1)
 dim(res1)
