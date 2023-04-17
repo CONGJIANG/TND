@@ -8,7 +8,7 @@ mod_IPW<-function(TNDdf_train){
   ipw <- ifelse(TNDdf_train$V == 1, 1/gTND_cont, 1/(gTND_cont))
   modY.ipw <- glm(Y ~ V, family=binomial(), weights = ipw, data=TNDdf_train)
   est.ipw <- exp(modY.ipw$coefficients[2])
-  se.ipw <- vcovHC(modY.ipw)[2,2]
+  se.ipw <- sqrt(vcovHC(modY.ipw)[2,2])
   return(list(est = est, CI = c(est - 1.96*se.ipw/sqrt(nrow(TNDdf_train)), est + 1.96*se.ipw/sqrt(nrow(TNDdf_train))) ))
 }
 mod_IPW(TNDdf_train)
@@ -123,7 +123,7 @@ CI1=CI2=CI3=CI4=CI5=c(0,0)
 #seeds<-read.table("seeds.txt", header=F)$V1
 seeds <- seq(1, 1000, 1)
 for (i in 1:1000){
-  TNDdf_train <-datagen(ssize=2000, em=3)
+  TNDdf_train <-datagen(ssize=2000, em=2)
   #######################################################
   #IPW with controls to fit g
   est.1<-mod_IPW(TNDdf_train)
@@ -145,16 +145,25 @@ for (i in 1:1000){
   est.6 <- mod_EIF2(TNDdf_train)
   est6<- est.6$est
   CI4<- est.6$CI
-  write(c(i,est1,CI1,est2,est3,est4,CI2,est5,CI3,est6,CI4),file="TNDStudy1hal2000_em3.txt",ncolumns=10,append=T)
+  write(c(i,est1,CI1,est2,est3,est4,CI2,est5,CI3,est6,CI4),file="TNDStudy1hal2000_em2v2.txt",ncolumns=30,append=T)
 }
 
-res1<-read.table("TNDStudy1hal2000.txt",header=F)
+res1<-read.table("TNDStudy1hal2000_em2v2.txt",header=F)
 res1 <- na.omit(res1)
 head(res1)
 dim(res1)
 #em=1 true mRR = 0.04363 ;
-colnames(res1) <- c("i", "IPW", "out-PS","out-Out", "EIF-PS", "EIF-Out", "EIF2")
+colnames(res1)[c(1, 2, 5, 6, 7, 10, 13)] <- c("i", "IPW", "out-PS","out-Out", "EIF-PS", "EIF-Out", "EIF2")
 mRR.em3 = 0.159513;
 mRR.em1 = 0.04363
-apply((res1- mRR.em1), 2, median)
-apply(res1- mRR, 2, sd)
+mRR.em2 = 0.07174
+apply((res1- mRR.em2), 2, median)
+apply(res1, 2, sd)
+
+
+#CIs
+psi = mRR.em1
+mean(psi<=res1$V4 & psi>=res1$V3) # 50
+mean(psi<=res1$V9 & psi>=res1$V8) #88
+mean(psi<=res1$V12 & psi>=res1$V11) #50
+mean(psi<=res1$V15 & psi>=res1$V14) # 73
