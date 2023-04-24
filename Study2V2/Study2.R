@@ -83,11 +83,15 @@ mod_OR_c <- function(dat){
   TNDmod<-glm(Y~ V + C + exp(C),family=binomial(),data=dat)
   mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
   mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
+  
+  TNDmod1<-glm(Y ~ C + exp(C),family=binomial(),data=dat)
+  preY=predict(TNDmod1,type="response")
+  
   w1 = (1 - preY)/(1 - mu1)
   w0 = (1 - preY)/(1 - mu0)
   Q1 = w1 * mu1
   Q0 = w0 * mu0
-  est <- mean(Q1)/mean(Q2)
+  est <- mean(Q1)/mean(Q0)
   return(list(est = est))
 }
 #  outcome regression wrong
@@ -95,11 +99,13 @@ mod_OR_w <- function(dat){
   TNDmod<-glm(Y~ 1,family=binomial(),data=dat)
   mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
   mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
+  TNDmod1<-glm(Y ~ 1,family=binomial(),data=dat)
+  preY=predict(TNDmod1,type="response")
   w1 = (1 - preY)/(1 - mu1)
   w0 = (1 - preY)/(1 - mu0)
   Q1 = w1 * mu1
   Q0 = w0 * mu0
-  est <- mean(Q1)/mean(Q2)
+  est <- mean(Q1)/mean(Q0)
   return(list(est = est))
 }
 ######################################################################
@@ -316,7 +322,7 @@ modEIF2d<-function(dat){
 CI1=CI2=CI3=CI4=CI5=CI6=CI7=CI8=CI9=CI10=c(0,0)
 
 for (i in 1:1000){
-  dat<-datagen(ssize=1000, em=0)
+  dat<-datagen(ssize=500, em=0)
   #######################################################
   # Marginal RR 
   # IPW ps correct
@@ -360,11 +366,13 @@ for (i in 1:1000){
   est10 <- modEIF2d(dat)$est
   CI10 <-  modEIF2d(dat)$CI
   #######################################################
-  # OR estimator 
-  est11 <- mod_OR_c(dat)
-  est12 <- mod_OR_w(dat)
-  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10, est11, est12),file="Study2results1000.txt",ncolumns=40,append=T)
+  # OR estimators
+  est11 <- mod_OR_c(dat)$est
+  est12 <- mod_OR_w(dat)$est
+  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10, est11, est12),file="Study2results500.txt",ncolumns=50,append=T)
 }
+
+
 
 
 res1<-read.table("Study2results1000.txt",header=F)
@@ -389,4 +397,3 @@ mean(psi<=res1$V10 & psi>=res1$V9) #88
 mean(psi<=res1$V13 & psi>=res1$V12) #50
 mean(psi<=res1$V16 & psi>=res1$V15) # 73
 mean(psi<=res1$V19 & psi>=res1$V18) #0
-
