@@ -8,25 +8,17 @@
 #OR_WI<-1 #no effect of vaccine on W from other infection
 #OR_WC<-5 #effect of vaccine on covid symptoms
 #OR_H<-1.5 #effect of vaccine on hospitalization among those with symptoms
-#em=0
-#true marg RR = 0.04 ; true cond RR = 0.04 ; #ONLY GOOD TO TWO DECIMALS
-
-#Scenario 2: Effect modification of V by C on Infec_COVID
-#em=1
-#true marg RR = 0.25; true cond RR = 0.23;
-
-
 datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3,OR_WI=1,OR_WC=5,OR_H=1.5,em=0,cfV0=F,cfV1=F,return_full=F){
   set.seed(seed)
   
   #generate data
-  C<-rnorm(n=popsize)
+  C<-runif(n=popsize, -3, 3)
   U1<-rbinom(n=popsize,size=1,prob=0.5) #affects both
   U2<-rbinom(n=popsize,size=1,prob=0.5) #affects covid
   
   if(cfV0==T) V=rep(0,popsize); if(cfV1==T) V=rep(1,popsize);
   if(cfV0==F&cfV1==F){
-    V<-rbinom(prob=plogis(0.5+0.3*C+sin(C)),size=1,n=popsize) #prevalence is around 0.61
+    V<-rbinom(prob=plogis(0.5 + 0.3*C + abs(C) - sin(pi*C) ),size=1,n=popsize) #prevalence is around 0.61
   }
   #Infection (with something) has some common risk factors U1 and C
   Infec<-rbinom(prob=plogis(0.5*C-5+0.5*U1),size=1,n=popsize) #current prevalence around 0.007
@@ -36,8 +28,8 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3
   #symptoms based on infection
   #can come from either or both infections, if present
   W=rep(0,popsize)
-  W[Infec==1]<-rbinom(prob=plogis(-0.5+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
-  W[Infec_COVID==1]<-rbinom(prob=plogis(-1+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
+  W[Infec==1]<-rbinom(prob=plogis(2+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
+  W[Infec_COVID==1]<-rbinom(prob=plogis(-3+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
   #mean(W[Infec==1|Infec_COVID==1]) #25%
   #mean(W[Infec_COVID==1]) #39%
   #mean(W[Infec==1]) #12%
@@ -60,33 +52,36 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3
 
 dat<-datagen(ssize=1000, em=0)
 sum(dat$Y)/1000
+
 ######################################################################
 ###Run Simulation Study
 # IPW estimator
 library(sandwich)
+# IPW correct
 mod_IPW_c <- function(dat){
-  TNDmod_g_col<-glm(V~C + sin(C),family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm(V ~  C + abs(C) +  sin(pi*C),family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)))
   ipw <- ifelse(dat$V == 1, 1/g1_cont, 1/(1 - g1_cont))
-  modY.ipw <- glm(Y ~ V, family=binomial(link = "log"), weights = ipw, data=dat)
+  modY.ipw <- glm(Y ~ V, family=binomial(link = "logit"), weights = ipw, data=dat)
   est <- exp(modY.ipw$coefficients[2])
-  se <- vcovHC(modY.ipw)[2,2]
+  se <- sqrt(vcovHC(modY.ipw)[2,2])
   return(list(est = est, CI = c(est - 1.96*se/sqrt(nrow(dat)), est + 1.96*se/sqrt(nrow(dat))) ))
 }
-
+# IPW wrong
 mod_IPW_w <- function(dat){
-  TNDmod_g_col<-glm(V~C,family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm(V ~ 1 ,family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)))
   ipw <- ifelse(dat$V == 1, 1/g1_cont, 1/(1 - g1_cont))
-  modY.ipw <- glm(Y ~ V, family=binomial(link = "log"), weights = ipw, data=dat)
+  modY.ipw <- glm(Y ~ V, family=binomial(link = "logit"), weights = ipw, data=dat)
   est <- exp(modY.ipw$coefficients[2])
-  se <- vcovHC(modY.ipw)[2,2]
+  se <- sqrt(vcovHC(modY.ipw)[2,2])
   return(list(est = est, CI = c(est - 1.96*se/sqrt(nrow(dat)), est + 1.96*se/sqrt(nrow(dat))) ))
 }
-
-
+######################################################################
+# EIF estimator 1 (Equation 10):
+# S1) both are correct
 modEIF1a<-function(dat){
-  TNDmod_g_col<-glm(V~C + sin(C),family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm(V~  C + abs(C) +  sin(pi*C),family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   TNDmod1<-glm(Y ~ C + exp(C),family=binomial(),data=dat)
@@ -107,13 +102,13 @@ modEIF1a<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - Q1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - Q0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c(CI_l, CI_u) ) )
 }
-
+# S2) Out is correct, but PS is wrong
 modEIF1b<-function(dat){
-  TNDmod_g_col<-glm(V~C,family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm( V ~ 1 ,family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   
@@ -137,20 +132,20 @@ modEIF1b<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - Q1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - Q0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c( CI_l, CI_u) ))
 }
-
+# S3) PS is correct, but Out is wrong
 modEIF1c<-function(dat){
-  TNDmod_g_col<-glm(V~C + sin(C),family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm(V~  C + abs(C) +  sin(pi*C),family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   
-  TNDmod1<-glm(Y ~ C,family=binomial(),data=dat)
+  TNDmod1<-glm(Y ~ 1,family=binomial(),data=dat)
   preY=predict(TNDmod1,type="response")
   
-  TNDmod<-(glm(Y~ V + C,family=binomial(),data=dat)) 
+  TNDmod<-(glm(Y~ V,family=binomial(),data=dat)) 
   
   mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
   mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
@@ -167,20 +162,20 @@ modEIF1c<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - Q1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - Q0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c( CI_l, CI_u)))
 }
-
+# S4) Both are wrong
 modEIF1d<-function(dat){
-  TNDmod_g_col<-glm(V~C,family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm( V ~ 1 ,family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   
-  TNDmod1<-glm(Y ~ C,family=binomial(),data=dat)
+  TNDmod1<-glm(Y ~ 1,family=binomial(),data=dat)
   preY=predict(TNDmod1,type="response")
   
-  TNDmod<-(glm(Y~ V + C,family=binomial(),data=dat)) 
+  TNDmod<-(glm(Y~ V,family=binomial(),data=dat)) 
   
   mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
   mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
@@ -197,16 +192,17 @@ modEIF1d<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - Q1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - Q0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c( CI_l, CI_u)) )
 }
 
 
 ######################################################################
-### EIF 2
+### EIF 2 (Equation 11)
+# EIF estimator 2:S1) both are correct
 modEIF2a<-function(dat){
-  TNDmod_g_col<-glm(V~C + sin(C),family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm(V~  C + abs(C) +  sin(pi*C),family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   
@@ -222,13 +218,13 @@ modEIF2a<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - mu1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - mu0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c( CI_l, CI_u)))
 }
 
 modEIF2b<-function(dat){
-  TNDmod_g_col<-glm(V~C,family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm( V ~ 1 ,family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   
@@ -244,17 +240,17 @@ modEIF2b<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - mu1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - mu0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c( CI_l, CI_u)))
 }
 
 modEIF2c<-function(dat){
-  TNDmod_g_col<-glm(V~C + sin(C),family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm(V~  C + abs(C) +  sin(pi*C),family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   
-  TNDmod<-(glm(Y~ V + C,family=binomial(),data=dat)) 
+  TNDmod<-(glm(Y~ V,family=binomial(),data=dat)) 
   mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
   mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
   
@@ -265,17 +261,17 @@ modEIF2c<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - mu1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - mu0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c( CI_l, CI_u)))
 }
 
 modEIF2d<-function(dat){
-  TNDmod_g_col<-glm(V~C,family=binomial(),data=dat,subset=(dat$Y==0))
+  TNDmod_g_col<-glm( V ~ 1 ,family=binomial(),data=dat,subset=(dat$Y==0))
   g1_cont<-predict(TNDmod_g_col,type="response",newdata=as.data.frame(cbind(C=dat$C,V=dat$V,Y=dat$Y)));
   g0_cont <- 1 - g1_cont
   
-  TNDmod<-(glm(Y~ V + C,family=binomial(),data=dat)) 
+  TNDmod<-(glm(Y~ V,family=binomial(),data=dat)) 
   mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
   mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
   
@@ -287,12 +283,12 @@ modEIF2d<-function(dat){
   var1 <- mean((dat$Y*dat$V/g1_cont - mu1*A1)^2)
   var0 <- mean((dat$Y*(1-dat$V)/g0_cont - mu0*A0)^2)
   se <- sqrt(var1/(psi1^2) + var0/(psi0^2))
-  CI_l <- exp(log(psi1/psi0) - 1.96*se/sqrt(nrow(dat)))
-  CI_u <- exp(log(psi1/psi0) + 1.96*se/sqrt(nrow(dat)))
+  CI_l <- (psi1/psi0)* exp(- 1.96*se/sqrt(nrow(dat)))
+  CI_u <- (psi1/psi0)* exp(1.96*se/sqrt(nrow(dat)))
   return(list(est = psi1/psi0, CI = c( CI_l, CI_u)))
 }
 
-CI1=CI2=CI3=CI4=CI5=CI6=CI7=CI8=CI9=CI10=CI11=CI12=CI13=CI14=CI15=CI16=CI17=CI18=CI19=CI20=c(0,0)
+CI1=CI2=CI3=CI4=CI5=CI6=CI7=CI8=CI9=CI10=c(0,0)
 
 for (i in 1:1000){
   dat<-datagen(ssize=1000, em=0)
@@ -338,19 +334,31 @@ for (i in 1:1000){
   # Both are not correct
   est10 <- modEIF2d(dat)$est
   CI10 <-  modEIF2d(dat)$CI
-  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10),file="/Users/congjiang/Downloads/Study2results3v1.txt",ncolumns=40,append=T)
+  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10),file="Study2results1000.txt",ncolumns=40,append=T)
 }
 
 
-res1<-read.table("/Users/congjiang/Downloads/Study2results2v2.txt",header=F)
+res1<-read.table("Study2results1000.txt",header=F)
 head(res1)
 dim(res1)
-#em=0
-psi = 0.0469;
-colnames(res1)[seq(2, 5)] <- c("BothCorrect", "OutCorrect", "PSCorrect", "BothWrong")
-apply(res1, 2, mean) - psi
-apply(res1, 2, sd)/sqrt(1000)
-vioplot( res1[ , 2], res1[ , 3], res1[ , 4], names=c("BothCorrect", "OutCorrect", "PSCorrect"),  
+#truth mRR
+psi = 0.04664484
+psi = 0.047
+colnames(res1)[seq(2, 30,3)] <- c("IPWCorrect", "IPWrong", "BothCorrect1", "OutCorrect1", "PSCorrect1", "BothWrong1", "BothCorrect2", "OutCorrect2", "PSCorrect2", "BothWrong2")
+(apply(res1[,seq(2, 30,3)], 2, mean) - psi)
+apply(res1[,seq(2, 30,3)], 2, sd)/sqrt(1000)
+library(vioplot)
+vioplot( res1$IPWCorrect, res1$IPWrong, res1$BothCorrect1,res1$OutCorrect1 , res1$PSCorrect1 , res1$BothWrong1, names=c("IPWCorrect", "IPWrong","BothCorrect", "OutCorrect", "PSCorrect", "BothWrong1"),  
          xlab= "n = 2000", ylab = expression(paste( psi, " estimates")) )
-abline(h = mRR, col = "red")
-sum(dat$Y)/nrow(dat)
+abline(h = psi, col = "red")
+
+
+#CIs
+mean(psi<=res1$V4 & psi>=res1$V3) # 50
+mean(psi<=res1$V7 & psi>=res1$V6) # 0
+mean(psi<=res1$V10 & psi>=res1$V9) #88
+mean(psi<=res1$V13 & psi>=res1$V12) #50
+mean(psi<=res1$V16 & psi>=res1$V15) # 73
+mean(psi<=res1$V19 & psi>=res1$V18) #0
+
+
