@@ -77,6 +77,31 @@ mod_IPW_w <- function(dat){
   se <- sqrt(vcovHC(modY.ipw)[2,2])
   return(list(est = est, CI = c(est - 1.96*se/sqrt(nrow(dat)), est + 1.96*se/sqrt(nrow(dat))) ))
 }
+
+# outcome regression correct
+mod_OR_c <- function(dat){
+  TNDmod<-glm(Y~ V + C + exp(C),family=binomial(),data=dat)
+  mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
+  mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
+  w1 = (1 - preY)/(1 - mu1)
+  w0 = (1 - preY)/(1 - mu0)
+  Q1 = w1 * mu1
+  Q0 = w0 * mu0
+  est <- mean(Q1)/mean(Q2)
+  return(list(est = est))
+}
+#  outcome regression wrong
+mod_OR_w <- function(dat){
+  TNDmod<-glm(Y~ 1,family=binomial(),data=dat)
+  mu1=predict(TNDmod,newdata=as.data.frame(cbind(V=1,C=dat$C)),type="response")
+  mu0=predict(TNDmod,newdata=as.data.frame(cbind(V=0,C=dat$C)),type="response")
+  w1 = (1 - preY)/(1 - mu1)
+  w0 = (1 - preY)/(1 - mu0)
+  Q1 = w1 * mu1
+  Q0 = w0 * mu0
+  est <- mean(Q1)/mean(Q2)
+  return(list(est = est))
+}
 ######################################################################
 # EIF estimator 1 (Equation 10):
 # S1) both are correct
@@ -334,7 +359,11 @@ for (i in 1:1000){
   # Both are not correct
   est10 <- modEIF2d(dat)$est
   CI10 <-  modEIF2d(dat)$CI
-  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10),file="Study2results1000.txt",ncolumns=40,append=T)
+  #######################################################
+  # OR estimator 
+  est11 <- mod_OR_c(dat)
+  est12 <- mod_OR_w(dat)
+  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10, est11, est12),file="Study2results1000.txt",ncolumns=40,append=T)
 }
 
 
@@ -360,5 +389,4 @@ mean(psi<=res1$V10 & psi>=res1$V9) #88
 mean(psi<=res1$V13 & psi>=res1$V12) #50
 mean(psi<=res1$V16 & psi>=res1$V15) # 73
 mean(psi<=res1$V19 & psi>=res1$V18) #0
-
 
