@@ -1,6 +1,7 @@
 
 N <- 5000
-TndDAT <- datagen(ssize = N, em = 3)
+TndDAT <- datagen(ssize = N, em = 1)
+sum(TndDAT$Y)/N
 # Define the sample size
 n <- seq(100, N, by = 100)
 
@@ -31,21 +32,24 @@ mRR.em2 = 0.07174
 
 
 # Compute the root-n scaled biases
-bias.ipw <- (estIPW_vec - mRR.em3) / sqrt(n)
-bias.or <- (estOR_vec - mRR.em3) / sqrt(n)
-bias.eif <- (estEIF_vec - mRR.em3) / sqrt(n)
-bias.eif2 <- (estEIF2_vec - mRR.em3) / sqrt(n)
+bias.ipw <- (estIPW_vec - mRR.em1) / sqrt(n)
+bias.or <- (estOR_vec - mRR.em1) / sqrt(n)
+bias.eif <- (estEIF_vec - mRR.em1) / sqrt(n)
+bias.eif2 <- (estEIF2_vec - mRR.em1) / sqrt(n)
 
 res <- as.data.frame(cbind(n = n, bias.ipw = bias.ipw,bias.or = bias.or, bias.eif = bias.eif, bias.eif2 =bias.eif2))
 res <- na.omit(res)
 # Plot the root-n scaled biases as a function of sample size
 plot(res$n, res$bias.eif2 , type = "b", pch = 19, col = "red",
-     xlab = "Sample size (n)", ylab = "Root-n scaled bias", ylim = c(-0.05, 0.05))
+     xlab = "Sample size (n)", ylab = "Root-n scaled bias", ylim = c(-0.03, 0.03))
 lines(res$n, res$bias.or, type = "b",pch = 4, col = "blue")
 lines(res$n, res$bias.ipw, type = "b", pch = 2, col = "black")
+#lines(res$n, 1/sqrt(res$n), type = "b",pch = 0,  col = "brown")
 #lines(res$n, res$bias.eif, type = "b", pch = 2, col = "black")
 abline(h = 0, lty = 2)
 legend("bottomright", legend = c("IPW","EIF", "OutReg"), pch = c(2, 19, 4), col = c("black","red", "blue"), lty = 1)
-title("Root-n Consistency of Proposed Estimators for mRR (em = 3)")
-write.csv(res,file="TNDStudy1halrootnV2em3.csv")
-a <- read.csv("TNDStudy1halrootnV2.csv")
+title("Root-n Consistency of Proposed Estimators for mRR (em = 1)")
+#legend("bottomright", legend = c("IPW","EIF", "OutReg", expression(1/sqrt(n))), pch = c(2, 19, 4,0), col = c("black","red", "blue","brown" ), lty = 1)
+#title("Root-n Consistency of Proposed Estimators for mRR (em = 1)")
+write.csv(res,file="TNDStudy1halrootnV2em1.csv")
+res <- read.csv("TNDStudy1halrootnV2.csv")
