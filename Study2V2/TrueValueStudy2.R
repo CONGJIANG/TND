@@ -13,13 +13,13 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3
   set.seed(seed)
   
   #generate data
-  C<-rnorm(n=popsize)
+  C<-runif(n=popsize, -3, 3)
   U1<-rbinom(n=popsize,size=1,prob=0.5) #affects both
   U2<-rbinom(n=popsize,size=1,prob=0.5) #affects covid
   
   if(cfV0==T) V=rep(0,popsize); if(cfV1==T) V=rep(1,popsize);
   if(cfV0==F&cfV1==F){
-    V<-rbinom(prob=plogis(0.5+0.3*C+sin(C)),size=1,n=popsize) #prevalence is around 0.61
+    V<-rbinom(prob=plogis(1.5 + 0.3*C + log(abs(C)) - cos(pi*C) ),size=1,n=popsize) #prevalence is around 0.61
   }
   #Infection (with something) has some common risk factors U1 and C
   Infec<-rbinom(prob=plogis(0.5*C-5+0.5*U1),size=1,n=popsize) #current prevalence around 0.007
@@ -29,7 +29,7 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=500,popsize=1500000,OR_C=3
   #symptoms based on infection
   #can come from either or both infections, if present
   W=rep(0,popsize)
-  W[Infec==1]<-rbinom(prob=plogis(-0.5+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
+  W[Infec==1]<-rbinom(prob=plogis(0.1+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
   W[Infec_COVID==1]<-rbinom(prob=plogis(-1+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
   #mean(W[Infec==1|Infec_COVID==1]) #25%
   #mean(W[Infec_COVID==1]) #39%
@@ -61,7 +61,7 @@ for (j in 1:50){
   datfull0<-datagen(cfV0=T,return_full=T)
   orvect[j]<-mean(datfull1$H*datfull1$Infec_COVID)/mean(datfull0$H*datfull0$Infec_COVID)
 }
-(psi = mean(orvect)) #0.0469
+(psi = mean(orvect)) #0.06705787
 hist(orvect)
 
 #true marginal RR for Infec_COVID
