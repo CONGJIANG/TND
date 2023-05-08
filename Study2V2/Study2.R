@@ -322,7 +322,7 @@ modEIF2d<-function(dat){
 CI1=CI2=CI3=CI4=CI5=CI6=CI7=CI8=CI9=CI10=c(0,0)
 
 for (i in 1:1000){
-  dat<-datagen(ssize=500, em=0)
+  dat<-datagen(ssize=2000, em=0)
   #######################################################
   # Marginal RR 
   # IPW ps correct
@@ -369,21 +369,21 @@ for (i in 1:1000){
   # OR estimators
   est11 <- mod_OR_c(dat)$est
   est12 <- mod_OR_w(dat)$est
-  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10, est11, est12),file="Study2results500.txt",ncolumns=50,append=T)
+  write(c(i,est1,CI1, est2,CI2, est3,CI3,est4,CI4, est5,CI5, est6,CI6, est7,CI7,est8,CI8, est9,CI9, est10,CI10, est11, est12),file="Study2results2000.txt",ncolumns=50,append=T)
 }
 
 
 
 
-res1<-read.table("Study2results1000.txt",header=F)
+res1<-read.table("Study2results2000.txt",header=F)
 head(res1)
 dim(res1)
 #truth mRR
 psi = 0.04664484
 psi = 0.047
-colnames(res1)[seq(2, 30,3)] <- c("IPWCorrect", "IPWrong", "BothCorrect1", "OutCorrect1", "PSCorrect1", "BothWrong1", "BothCorrect2", "OutCorrect2", "PSCorrect2", "BothWrong2")
-(apply(res1[,seq(2, 30,3)], 2, mean) - psi)
-apply(res1[,seq(2, 30,3)], 2, sd)/sqrt(1000)
+colnames(res1)[c(seq(2, 30,3), 30,31)] <- c("IPWCorrect", "IPWrong", "BothCorrect1", "OutCorrect1", "PSCorrect1", "BothWrong1", "BothCorrect2", "OutCorrect2", "PSCorrect2", "BothWrong2",  "ORCorrect", "ORWrong")
+(apply(res1[,c(seq(2, 30,3), 30,31)], 2, mean) - psi)
+apply(res1[,c(seq(2, 30,3), 30,31)], 2, sd)
 library(vioplot)
 vioplot( res1$IPWCorrect, res1$IPWrong, res1$BothCorrect1,res1$OutCorrect1 , res1$PSCorrect1 , res1$BothWrong1, names=c("IPWCorrect", "IPWrong","BothCorrect", "OutCorrect", "PSCorrect", "BothWrong1"),  
          xlab= "n = 2000", ylab = expression(paste( psi, " estimates")) )
@@ -397,3 +397,4 @@ mean(psi<=res1$V10 & psi>=res1$V9) #88
 mean(psi<=res1$V13 & psi>=res1$V12) #50
 mean(psi<=res1$V16 & psi>=res1$V15) # 73
 mean(psi<=res1$V19 & psi>=res1$V18) #0
+
