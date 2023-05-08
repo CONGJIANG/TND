@@ -4,7 +4,7 @@ element <- function(TNDdf_train){
   TNDdf_train1 <- TNDdf_train[s,]
   TNDdf_train2 <-  TNDdf_train[-s,]
   
-  TND_train_ctr1 <- subset(TNDdf_train1, Y==0)
+  TNDdf_train_ctr1 <- subset(TNDdf_train1, Y==0)
   # training
   mod_g1_ctr <- fit_hal(
     X = select(TNDdf_train_ctr1, !c(V,Y)),
@@ -12,7 +12,7 @@ element <- function(TNDdf_train){
     family = "binomial"
   )
   
-  TND_train_ctr2 <- subset(TNDdf_train2, Y==0)
+  TNDdf_train_ctr2 <- subset(TNDdf_train2, Y==0)
   # training
   mod_g2_ctr <- fit_hal(
     X = select(TNDdf_train_ctr2, !c(V,Y)),
@@ -26,24 +26,24 @@ element <- function(TNDdf_train){
   
   # mu
   Out_mu1 <- fit_hal(X = select(TNDdf_train1, !Y),
-                    Y = TNDdf_train1$Y,
-                    family = "binomial"
+                     Y = TNDdf_train1$Y,
+                     family = "binomial"
   )
   Out_mu2 <- fit_hal(X = select(TNDdf_train2, !Y),
                      Y = TNDdf_train2$Y,
                      family = "binomial"
   )
-  mu1 <- TNDdf_train$Y; mu0 <- TNDdf_train$Y
+  mu1 <- TNDdf_train$Y; mu0 <- TNDdf_train$Y;
   mu1[-s] <- predict(Out_mu1,new_data=as.data.frame(cbind(V=1,C = select(TNDdf_train2, !c(V,Y)) )),type="response")
   mu1[s] <- predict(Out_mu2,new_data=as.data.frame(cbind(V=1,C = select(TNDdf_train1, !c(V,Y)) )),type="response")               
-
+  
   mu0[-s] <- predict(Out_mu1,new_data=as.data.frame(cbind(V=0,C = select(TNDdf_train2, !c(V,Y)) )),type="response")
   mu0[s] <- predict(Out_mu2,new_data=as.data.frame(cbind(V=0,C = select(TNDdf_train1, !c(V,Y)) )),type="response") 
   
   # m0
   Out_m1 <- fit_hal(X = select(TNDdf_train1, !c(V,Y)),
-                   Y = TNDdf_train1$Y,
-                   family = "binomial"
+                    Y = TNDdf_train1$Y,
+                    family = "binomial"
   )
   Out_m2 <- fit_hal(X = select(TNDdf_train2, !c(V,Y)),
                     Y = TNDdf_train2$Y,
@@ -57,6 +57,7 @@ element <- function(TNDdf_train){
 }
 
 ######## Methods for VE
+TNDdat = datagen(ssize=2000, em=2)
 res <- element(TNDdat)
 # IPW estimate and SE
 mod_IPW <- mean(TNDdat$Y*TNDdat$V/res$g1)/mean(TNDdat$Y*(1-TNDdat$V)/res$g0)
