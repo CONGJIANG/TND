@@ -155,3 +155,60 @@ for(i in 1:nbs){
 bs_var <- var(bsest)
 CI = quantile(bsest,c(0.025,0.975))
 mod_OR; CI
+
+
+#####################################
+
+
+mod_IPW <- function(TNDdat, res){
+  TNDdat$ipw <- ifelse(TNDdat$V == 1, 1/res$g1, 1/res$g0)
+  modY.ipw <- glm(Y ~ V, family=binomial(link = "logit"), weights = ipw, data=TNDdat)
+  est.ipw <- exp(modY.ipw$coefficients[2])
+  se.ipw <- sqrt(vcovHC(modY.ipw)[2,2])
+  return(list(est = est.ipw, CI = c(est.ipw - 1.96*se.ipw/sqrt(nrow(TNDdat)), est.ipw + 1.96*se.ipw/sqrt(nrow(TNDdat)))) )
+}
+
+
+
+mod_EIF2 <- function(TNDdat, res){
+  # proposed eif estimator 2: SAME as the previous method, i.e.,eif
+  A.1 <- (1 - TNDdat$Y)*(TNDdat$V - res$g1)/(res$g1* (1 -res$mu1))
+  A.0 <- (1 - TNDdat$Y)*((1-TNDdat$V) - res$g0)/(res$g0* (1 - res$mu0))
+  psi.1 <- mean(TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)
+  psi.0 <- mean(TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)
+  mod_eif2 <- psi.1/psi.0
+  var.1 <- mean((TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)^2)
+  var.0 <- mean((TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)^2)
+  se2 <- sqrt(var.1/(psi.1^2) + var.0/(psi.0^2))
+  CI_l2 <- mod_eif2 *exp(- 1.96*se2/sqrt(nrow(TNDdat)))
+  CI_u2 <- mod_eif2 *exp( 1.96*se2/sqrt(nrow(TNDdat)))
+  return(list( est = mod_eif2, CI =  c(CI_l2, CI_u2)))
+}
+
+mod_EIF2(TNDdf_train)
+
+mod_OutReg(TNDdat, res){
+  mod_OR <- mean(res$mu1 * res$w1)/mean(res$mu0 * res$w0)
+  return(list( est = mod_OR))
+}
+
+for (i in 1:1000){
+  TNDdat = datagen(ssize=2000, em=1)
+  res <- element(TNDdat)
+  #######################################################
+  #IPW with controls to fit g
+  est.1<-mod_IPW(TNDdat, res)
+  est1<- est.1$est
+  CI1<- est.1$CI
+  #######################################################
+  # Outcome regression with propensity ratio
+  est2<-mod_OutReg(TNDdat, res)$est
+  # Outcome regression with outcome ratio
+  # est3<-mod_OutReg(TNDdat, deWet = "Out")$est
+  #######################################################
+  ## Method 3: The proposed estimator that is based on the EIF
+  est.6 <- mod_EIF2(TNDdat)
+  est6<- est.6$est
+  CI4<- est.6$CI
+  write(c(i,est1,CI1,est2,est6,CI4),file="TNDStudy1hal2000_em2v2.txt",ncolumns=30,append=T)
+}
