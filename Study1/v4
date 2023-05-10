@@ -182,13 +182,15 @@ mod_EIF2 <- function(TNDdat, res){
   mod_eif2 <- psi.1/psi.0
   eifln <-  (TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)/psi.1 - (TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)/ psi.0
   varln <-  (mean(eifln^2) - (mean(eifln)^2))/nrow(TNDdat)
-  mod_eif1 <- exp(mean(eifln))
-  CI_l1 <- mod_eif1 *exp(- 1.96 * sqrt(varln) )
-  CI_u1 <- mod_eif1 *exp( 1.96 * sqrt(varln) )
+
+  CI_l1 <- mod_eif2 *exp(- 1.96 * sqrt(varln) )
+  CI_u1 <- mod_eif2 *exp( 1.96 * sqrt(varln) )
   
-  CI_l2 <- mod_eif2 *exp(- 1.96 * sqrt(varln) )
-  CI_u2 <- mod_eif2 *exp( 1.96 * sqrt(varln) )
-  return(list( est1 = mod_eif1,CI1 =  c(CI_l1, CI_u1),  est2 = mod_eif2, CI2 =  c(CI_l2, CI_u2)))
+  eifpsi <- (TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)/psi.0 - (psi.1/psi.0)*(TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)/psi.0
+  var <- mean(eif^2) - (mean(eif)^2)
+  CI_l2 <- mod_eif2 - 1.96 * sqrt(var) 
+  CI_u2 <- mod_eif2 + 1.96 * sqrt(var) 
+  return(list( est1 = mod_eif2,CI1 =  c(CI_l1, CI_u1), CI2 =  c(CI_l2, CI_u2)))
 }
 
 mod_EIF2(TNDdat, res)
