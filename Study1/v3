@@ -168,7 +168,7 @@ mod_IPW <- function(TNDdat, res){
   return(list(est = est.ipw, CI = c(est.ipw - 1.96*se.ipw/sqrt(nrow(TNDdat)), est.ipw + 1.96*se.ipw/sqrt(nrow(TNDdat)))) )
 }
 
-
+mod_IPW(TNDdat, res)
 
 mod_EIF2 <- function(TNDdat, res){
   # proposed eif estimator 2: SAME as the previous method, i.e.,eif
@@ -185,15 +185,16 @@ mod_EIF2 <- function(TNDdat, res){
   return(list( est = mod_eif2, CI =  c(CI_l2, CI_u2)))
 }
 
-mod_EIF2(TNDdf_train)
+mod_EIF2(TNDdat, res)
 
-mod_OutReg(TNDdat, res){
+mod_OutReg<- function(TNDdat, res){
   mod_OR <- mean(res$mu1 * res$w1)/mean(res$mu0 * res$w0)
-  return(list( est = mod_OR))
+  return(list(est = mod_OR))
 }
 
+mod_OutReg(TNDdat, res)
 for (i in 1:1000){
-  TNDdat = datagen(ssize=2000, em=1)
+  TNDdat = datagen(ssize=2000, em=2)
   res <- element(TNDdat)
   #######################################################
   #IPW with controls to fit g
@@ -207,8 +208,30 @@ for (i in 1:1000){
   # est3<-mod_OutReg(TNDdat, deWet = "Out")$est
   #######################################################
   ## Method 3: The proposed estimator that is based on the EIF
-  est.6 <- mod_EIF2(TNDdat)
+  est.6 <- mod_EIF2(TNDdat, res)
   est6<- est.6$est
   CI4<- est.6$CI
-  write(c(i,est1,CI1,est2,est6,CI4),file="TNDStudy1hal2000_em2v2.txt",ncolumns=30,append=T)
+  write(c(i,est1,CI1,est2,est6,CI4),file="TNDStudy1hal2000_em2cross.txt",ncolumns=30,append=T)
 }
+
+
+res1<-read.table("TNDStudy1hal2000_em2cross.txt",header=F)
+res1 <- na.omit(res1)
+head(res1)
+summary(res1, na.rm = FALSE)
+which(res1$IPW == Inf)
+dim(res1)
+#em=1 true mRR = 0.04363 ;
+colnames(res1)[c(1, 2, 5, 6)] <- c("i", "IPW", "out-Out", "EIF2")
+mRR.em3 = 0.159513;
+mRR.em1 = 0.044
+mRR.em2 = 0.07174
+apply(res1, 2, mean) - mRR.em2
+apply(res1, 2, median) - mRR.em2
+apply(res1, 2, sd)
+
+
+#CIs
+psi = mRR.em1
+mean(psi<=res1$V4 & psi>=res1$V3) # 50
+mean(psi<=res1$V8 & psi>=res1$V7) #88
