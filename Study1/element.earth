@@ -1,0 +1,65 @@
+library(earth)
+library(dplyr)
+
+element.earth <- function(TNDdf_train){
+  # Data splitting
+  s <- sample(1:length(TNDdf_train$Y), length(TNDdf_train$Y)/2)
+  TNDdf_train1 <- TNDdf_train[s,]
+  TNDdf_train2 <-  TNDdf_train[-s,]
+  
+  TNDdf_train_ctr1 <- subset(TNDdf_train1, Y==0)
+  # training
+  mod_g1_ctr <- earth(
+      V ~ .,  
+      data = subset(TND_train_ctr1, select = -Y),
+      glm=list(family=binomial)
+    )
+
+  TNDdf_train_ctr2 <- subset(TNDdf_train2, Y==0)
+  # training
+  mod_g2_ctr <- earth(
+      V ~ .,  
+      data = subset(TND_train_ctr2, select = -Y),
+      glm=list(family=binomial)
+    )
+  g1_cont <- TNDdf_train$V
+  g1_cont[-s]<-predict(mod_g1_ctr,type="response",newdata=as.data.frame(cbind(C=TNDdf_train2$C,V=rep(1, nrow(TNDdf_train2)),Y=TNDdf_train2$Y)))
+  g1_cont[s]<-predict(mod_g2_ctr,type="response",newdata=as.data.frame(cbind(C=TNDdf_train1$C,V=rep(1, nrow(TNDdf_train1)),Y=TNDdf_train1$Y)))
+  
+  
+  # mu
+  Out_mu1 <- earth(
+    Y ~ .,  
+    data = TNDdf_train1,
+    glm=list(family=binomial)
+  )
+  Out_mu2 <- earth(
+    Y ~ .,  
+    data = TNDdf_train2,
+    glm=list(family=binomial)
+  )
+  
+  mu1 <- TNDdf_train$Y; mu0 <- TNDdf_train$Y;
+  mu1[-s] <- predict(Out_mu1,newdata=as.data.frame(cbind(V=1,C = select(TNDdf_train2, !c(V,Y)) )),type="response")
+  mu1[s] <- predict(Out_mu2,newdata=as.data.frame(cbind(V=1,C = select(TNDdf_train1, !c(V,Y)) )),type="response")               
+  
+  mu0[-s] <- predict(Out_mu1,newdata=as.data.frame(cbind(V=0,C = select(TNDdf_train2, !c(V,Y)) )),type="response")
+  mu0[s] <- predict(Out_mu2,newdata=as.data.frame(cbind(V=0,C = select(TNDdf_train1, !c(V,Y)) )),type="response") 
+  
+  # m0
+  Out_m1 <- earth(
+    Y ~ .,  
+    data = subset(TNDdf_train1, select = -V),
+    glm=list(family=binomial)
+  )
+  Out_m2 <- earth(
+    Y ~ .,  
+    data = subset(TNDdf_train2, select = -V),
+    glm=list(family=binomial)
+  )
+  m0 <- TNDdf_train$Y
+  m0[-s] <- predict(Out_m1,newdata = select(TNDdf_train2, !c(V,Y)), type="response")
+  m0[s] <- predict(Out_m2,newdata = select(TNDdf_train1, !c(V,Y)), type="response")
+  
+  return(list(mu1 = mu1, mu0 = mu0, m0 = m0, g1 =g1_cont, g0 = 1- g1_cont, w1 = m0/(1 - mu1), w0 = m0/(1 - mu0)))
+}
