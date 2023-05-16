@@ -233,7 +233,7 @@ mod_IPW <- function(TNDdat, res){
   
   CI_l <- est.ipw *exp(- 1.96 * se.ipw )
   CI_u <- est.ipw *exp( 1.96 * se.ipw )
-  return(list(est = est.ipw, CI =  c(CI_l, CI_u)))
+  return(list(est = est.ipw, se = se.ipw, CI =  c(CI_l, CI_u)))
 }
 
 mod_IPW(TNDdat, res)
@@ -255,7 +255,7 @@ mod_EIF2 <- function(TNDdat, res){
   var <- var(eifpsi)/nrow(TNDdat)
   CI_l2 <- mod_eif2 - 1.96 * sqrt(var) 
   CI_u2 <- mod_eif2 + 1.96 * sqrt(var) 
-  return(list( est = mod_eif2,CI1 =  c(CI_l1, CI_u1), CI2 =  c(CI_l2, CI_u2)))
+  return(list( est = mod_eif2, varln = varln, var = var, CI1 =  c(CI_l1, CI_u1), CI2 =  c(CI_l2, CI_u2)))
 }
 
 mod_EIF2(TNDdat, res)
@@ -274,6 +274,7 @@ for (i in 1:1000){
   #IPW with controls to fit g
   est.1<-mod_IPW(TNDdat, res)
   est1<- est.1$est
+  se1 <- est.1$se
   CI1<- est.1$CI
   #######################################################
   # Outcome regression with propensity ratio
@@ -284,9 +285,11 @@ for (i in 1:1000){
   ## Method 3: The proposed estimator that is based on the EIF
   est.6 <- mod_EIF2(TNDdat, res)
   est3<- est.6$est
+  varln <- est.6$varln
+  var <- est.6$var
   CI3<- est.6$CI1
   CI4<- est.6$CI2
-  write(c(i,est1,CI1,est2,est3,CI3,CI4),file="hal5000_em1cross.txt",ncolumns=30,append=T)
+  write(c(i,est1,CI1,est2,est3,CI3,CI4, varln, var),file="hal5000_em1cross.txt",ncolumns=30,append=T)
 }
 
 res1<-read.table("/Users/congjiang/Downloads/TNDStudy1hal2000_em1cross.txt",header=F)
