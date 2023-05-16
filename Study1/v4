@@ -266,9 +266,10 @@ mod_OutReg<- function(TNDdat, res){
 }
 
 mod_OutReg(TNDdat, res)
+library(hal9001)
 for (i in 1:1000){
-  TNDdat = datagen(ssize=5000, em=2)
-  res <- element.earth(TNDdat)
+  TNDdat = datagen(ssize=5000, em=1)
+  res <- element(TNDdat)
   #######################################################
   #IPW with controls to fit g
   est.1<-mod_IPW(TNDdat, res)
@@ -285,7 +286,7 @@ for (i in 1:1000){
   est3<- est.6$est
   CI3<- est.6$CI1
   CI4<- est.6$CI2
-  write(c(i,est1,CI1,est2,est3,CI3,CI4),file="TNDStudy1earth5000_em2cross.txt",ncolumns=30,append=T)
+  write(c(i,est1,CI1,est2,est3,CI3,CI4),file="hal5000_em1cross.txt",ncolumns=30,append=T)
 }
 
 res1<-read.table("/Users/congjiang/Downloads/TNDStudy1hal2000_em1cross.txt",header=F)
