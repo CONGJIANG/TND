@@ -246,13 +246,13 @@ mod_EIF2 <- function(TNDdat, res){
   psi.0 <- mean(TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)
   mod_eif2 <- psi.1/psi.0
   eifln <-  (TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)/psi.1 - (TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)/ psi.0
-  varln <-  (mean(eifln^2) - (mean(eifln)^2))/nrow(TNDdat)
+  varln <-  var(eifln)/nrow(TNDdat)
   
   CI_l1 <- mod_eif2 *exp(- 1.96 * sqrt(varln) )
   CI_u1 <- mod_eif2 *exp( 1.96 * sqrt(varln) )
   
   eifpsi <- (TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)/psi.0 - (psi.1/psi.0)*(TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)/psi.0
-  var <- (mean(eifpsi^2) - (mean(eifpsi)^2))/nrow(TNDdat)
+  var <- var(eifpsi)/nrow(TNDdat)
   CI_l2 <- mod_eif2 - 1.96 * sqrt(var) 
   CI_u2 <- mod_eif2 + 1.96 * sqrt(var) 
   return(list( est = mod_eif2,CI1 =  c(CI_l1, CI_u1), CI2 =  c(CI_l2, CI_u2)))
@@ -327,4 +327,3 @@ psi = mRR.em2
 mean(psi<=res1$V4 & psi>=res1$V3) #
 mean(psi<=res1$V8 & psi>=res1$V7) #
 mean(psi<=res1$V10 & psi>=res1$V9)
-
