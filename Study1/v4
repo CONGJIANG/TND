@@ -267,7 +267,7 @@ mod_OutReg<- function(TNDdat, res){
 
 mod_OutReg(TNDdat, res)
 library(hal9001)
-for (i in 1:1000){
+for (i in 1:1200){
   TNDdat = datagen(ssize=5000, em=1)
   res <- element(TNDdat)
   #######################################################
@@ -289,7 +289,7 @@ for (i in 1:1000){
   var <- est.6$var
   CI3<- est.6$CI1
   CI4<- est.6$CI2
-  write(c(i,est1,CI1,est2,est3,CI3,CI4, varln, var),file="hal5000_em1cross.txt",ncolumns=30,append=T)
+  write(c(i,est1,CI1,est2,est3,CI3,CI4,se1, varln, var),file="hal5000_em1cross.txt",ncolumns=30,append=T)
 }
 
 res1<-read.table("/Users/congjiang/Downloads/TNDStudy1hal2000_em1cross.txt",header=F)
