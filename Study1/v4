@@ -41,6 +41,71 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=2000,popsize=15000000,OR_C
 }
 
 
+library(earth)
+library(dplyr)
+
+element.earth <- function(TNDdf_train){
+  # Data splitting
+  s <- sample(1:length(TNDdf_train$Y), length(TNDdf_train$Y)/2)
+  TNDdf_train1 <- TNDdf_train[s,]
+  TNDdf_train2 <-  TNDdf_train[-s,]
+  
+  TNDdf_train_ctr1 <- subset(TNDdf_train1, Y==0)
+  # training
+  mod_g1_ctr <- earth(
+    V ~ .,  
+    data = subset(TNDdf_train_ctr1, select = -Y),
+    glm=list(family=binomial)
+  )
+  
+  TNDdf_train_ctr2 <- subset(TNDdf_train2, Y==0)
+  # training
+  mod_g2_ctr <- earth(
+    V ~ .,  
+    data = subset(TNDdf_train_ctr2, select = -Y),
+    glm=list(family=binomial)
+  )
+  g1_cont <- TNDdf_train$V
+  g1_cont[-s]<-predict(mod_g1_ctr,type="response",newdata=as.data.frame(cbind(C=TNDdf_train2$C,V=rep(1, nrow(TNDdf_train2)),Y=TNDdf_train2$Y)))
+  g1_cont[s]<-predict(mod_g2_ctr,type="response",newdata=as.data.frame(cbind(C=TNDdf_train1$C,V=rep(1, nrow(TNDdf_train1)),Y=TNDdf_train1$Y)))
+  
+  
+  # mu
+  Out_mu1 <- earth(
+    Y ~ .,  
+    data = TNDdf_train1,
+    glm=list(family=binomial)
+  )
+  Out_mu2 <- earth(
+    Y ~ .,  
+    data = TNDdf_train2,
+    glm=list(family=binomial)
+  )
+  
+  mu1 <- TNDdf_train$Y; mu0 <- TNDdf_train$Y;
+  mu1[-s] <- predict(Out_mu1,newdata=as.data.frame(cbind(V=1,C = select(TNDdf_train2, !c(V,Y)) )),type="response")
+  mu1[s] <- predict(Out_mu2,newdata=as.data.frame(cbind(V=1,C = select(TNDdf_train1, !c(V,Y)) )),type="response")               
+  
+  mu0[-s] <- predict(Out_mu1,newdata=as.data.frame(cbind(V=0,C = select(TNDdf_train2, !c(V,Y)) )),type="response")
+  mu0[s] <- predict(Out_mu2,newdata=as.data.frame(cbind(V=0,C = select(TNDdf_train1, !c(V,Y)) )),type="response") 
+  
+  # m0
+  Out_m1 <- earth(
+    Y ~ .,  
+    data = subset(TNDdf_train1, select = -V),
+    glm=list(family=binomial)
+  )
+  Out_m2 <- earth(
+    Y ~ .,  
+    data = subset(TNDdf_train2, select = -V),
+    glm=list(family=binomial)
+  )
+  m0 <- TNDdf_train$Y
+  m0[-s] <- predict(Out_m1,newdata = select(TNDdf_train2, !c(V,Y)), type="response")
+  m0[s] <- predict(Out_m2,newdata = select(TNDdf_train1, !c(V,Y)), type="response")
+  
+  return(list(mu1 = mu1, mu0 = mu0, m0 = m0, g1 =g1_cont, g0 = 1- g1_cont, w1 = m0/(1 - mu1), w0 = m0/(1 - mu0)))
+}
 
 element <- function(TNDdf_train){
   # Data splitting
@@ -102,7 +167,7 @@ element <- function(TNDdf_train){
 
 ######## Methods for VE
 TNDdat = datagen(ssize=2000, em=1)
-res <- element(TNDdat)
+res <- element.earth(TNDdat)
 # IPW estimate and SE
 mod_IPW <- mean(TNDdat$Y*TNDdat$V/res$g1)/mean(TNDdat$Y*(1-TNDdat$V)/res$g0)
 mod_IPW
@@ -159,7 +224,7 @@ mod_OR; CI
 
 #####################################
 
-
+library(sandwich)
 mod_IPW <- function(TNDdat, res){
   TNDdat$ipw <- ifelse(TNDdat$V == 1, 1/res$g1, 1/res$g0)
   modY.ipw <- glm(Y ~ V, family=binomial(link = "logit"), weights = ipw, data=TNDdat)
@@ -203,7 +268,7 @@ mod_OutReg<- function(TNDdat, res){
 mod_OutReg(TNDdat, res)
 for (i in 1:1000){
   TNDdat = datagen(ssize=5000, em=2)
-  res <- element(TNDdat)
+  res <- element.earth(TNDdat)
   #######################################################
   #IPW with controls to fit g
   est.1<-mod_IPW(TNDdat, res)
@@ -220,7 +285,7 @@ for (i in 1:1000){
   est3<- est.6$est
   CI3<- est.6$CI1
   CI4<- est.6$CI2
-  write(c(i,est1,CI1,est2,est3,CI3,CI4),file="TNDStudy1hal2000_em2cross.txt",ncolumns=30,append=T)
+  write(c(i,est1,CI1,est2,est3,CI3,CI4),file="TNDStudy1earth5000_em2cross.txt",ncolumns=30,append=T)
 }
 
 res1<-read.table("/Users/congjiang/Downloads/TNDStudy1hal2000_em1cross.txt",header=F)
@@ -243,7 +308,7 @@ mean(psi<=res1$V4 & psi>=res1$V3) #
 mean(psi<=res1$V8 & psi>=res1$V7) #
 
 
-res1<-read.table("TNDStudy1hal2000_em2cross.txt",header=F)
+res1<-read.table("TNDStudy1earth2000_em2cross.txt",header=F)
 res1 <- na.omit(res1)
 head(res1)
 dim(res1)
@@ -251,7 +316,7 @@ colnames(res1)[c(1, 2, 5, 6)] <- c("i", "IPW", "out-Out", "EIF2")
 summary(res1, na.rm = FALSE)
 (s <- which(res1$IPW == Inf))
 res1 <- res1[-s,]
-mRR.em2 = 0.0715
+mRR.em2 = 0.072
 apply(res1, 2, mean) - mRR.em2
 apply(res1, 2, median) - mRR.em2
 apply(res1, 2, sd)
@@ -262,3 +327,4 @@ psi = mRR.em2
 mean(psi<=res1$V4 & psi>=res1$V3) #
 mean(psi<=res1$V8 & psi>=res1$V7) #
 mean(psi<=res1$V10 & psi>=res1$V9)
+
