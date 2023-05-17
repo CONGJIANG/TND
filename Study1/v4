@@ -268,7 +268,7 @@ mod_OutReg<- function(TNDdat, res){
 mod_OutReg(TNDdat, res)
 library(hal9001)
 for (i in 1:1200){
-  TNDdat = datagen(ssize=5000, em=1)
+  TNDdat = datagen(ssize=5000, em=2)
   res <- element(TNDdat)
   #######################################################
   #IPW with controls to fit g
@@ -289,14 +289,14 @@ for (i in 1:1200){
   var <- est.6$var
   CI3<- est.6$CI1
   CI4<- est.6$CI2
-  write(c(i,est1,CI1,est2,est3,CI3,CI4,se1, varln, var),file="hal5000_em1cross.txt",ncolumns=30,append=T)
+  write(c(i,est1,CI1,est2,est3,CI3,CI4,se1, varln, var),file="hal5000_em2cross.txt",ncolumns=30,append=T)
 }
 
-res1<-read.table("/Users/congjiang/Downloads/TNDStudy1hal2000_em1cross.txt",header=F)
+res1<-read.table("hal5000_em1cross.txt",header=F)
 res1 <- na.omit(res1)
 head(res1)
 dim(res1)
-colnames(res1)[c(1, 2, 5, 6,7)] <- c("i", "IPW", "out-Out", "EIF1", "EIF2")
+colnames(res1)[c(1, 2, 5, 6, 11, 12, 13)] <- c("i", "IPW", "out-Out", "EIF", "se1","varln","var")
 summary(res1, na.rm = FALSE)
 (s <- which(res1$IPW == Inf))
 res1 <- res1[-s,]
@@ -310,7 +310,7 @@ apply(res1, 2, sd)
 psi = mRR.em1
 mean(psi<=res1$V4 & psi>=res1$V3) #
 mean(psi<=res1$V8 & psi>=res1$V7) #
-
+mean(psi<=res1$V10 & psi>=res1$V9)
 
 res1<-read.table("TNDStudy1earth2000_em2cross.txt",header=F)
 res1 <- na.omit(res1)
