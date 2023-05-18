@@ -1,15 +1,15 @@
-datagen<-function(seed=sample(1:1000000,size=1),ssize=2000,popsize=15000000,OR_C=3,OR_WI=1,OR_WC=5,OR_H=1.5,em=2,cfV0=F,cfV1=F,return_full=F){
+datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C=3,OR_WI=1,OR_WC=5,OR_H=1.5,em=2,cfV0=F,cfV1=F,return_full=F){
   set.seed(seed)
   #generate data
-  C<-rnorm(n=popsize)
+  C<- rnorm(n=popsize) #runif(n=popsize, -1,1)
   U1<-rbinom(n=popsize,size=1,prob=0.5) #affects both
   U2<-rbinom(n=popsize,size=1,prob=0.5) #affects covid
   
   if(cfV0==T) V=rep(0,popsize); if(cfV1==T) V=rep(1,popsize);
   if(cfV0==F&cfV1==F){
-    V<-rbinom(prob=plogis(0.5+0.3*C + C^2 + sin(C)),size=1,n=popsize) #prevalence is around 0.73
+    p = plogis(1 - 0.1 * C - 0.1 * C^2 - 0.2 * sin(C))
+    V<-rbinom(prob=p,size=1,n=popsize) #prevalence is around 0.71
   }
-  #mean(V)
   #Infection (with something) has some common risk factors U1 and C
   Infec<-rbinom(prob=plogis(0.5*C-5+0.5*U1),size=1,n=popsize) #current prevalence around 0.007
   
@@ -19,7 +19,7 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=2000,popsize=15000000,OR_C
   #symptoms based on infection
   #can come from either or both infections, if present
   W=rep(0,popsize)
-  W[Infec==1]<-rbinom(prob=plogis(-4+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
+  W[Infec==1]<-rbinom(prob=plogis(0.5+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
   W[Infec_COVID==1]<-rbinom(prob=plogis(-2+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
   #mean(W[Infec==1|Infec_COVID==1]) #9%
   #mean(W[Infec_COVID==1]) #27%
@@ -40,6 +40,8 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=2000,popsize=15000000,OR_C
   return(dat)
 }
 
+TNDdat = datagen(ssize=5000, em=1)
+sum(TNDdat$Y)/ssize
 
 library(earth)
 library(dplyr)
@@ -225,6 +227,7 @@ mod_OR; CI
 #####################################
 
 library(sandwich)
+res <- element(TNDdat)
 mod_IPW <- function(TNDdat, res){
   TNDdat$ipw <- ifelse(TNDdat$V == 1, 1/res$g1, 1/res$g0)
   modY.ipw <- glm(Y ~ V, family=binomial(link = "logit"), weights = ipw, data=TNDdat)
@@ -268,7 +271,7 @@ mod_OutReg<- function(TNDdat, res){
 mod_OutReg(TNDdat, res)
 library(hal9001)
 for (i in 1:1200){
-  TNDdat = datagen(ssize=5000, em=2)
+  TNDdat = datagen(ssize=5000, em=1)
   res <- element(TNDdat)
   #######################################################
   #IPW with controls to fit g
@@ -289,10 +292,10 @@ for (i in 1:1200){
   var <- est.6$var
   CI3<- est.6$CI1
   CI4<- est.6$CI2
-  write(c(i,est1,CI1,est2,est3,CI3,CI4,se1, varln, var),file="hal5000_em2cross.txt",ncolumns=30,append=T)
+  write(c(i,est1,CI1,est2,est3,CI3,CI4,se1, varln, var),file="newVhal5000_em1cross.txt",ncolumns=30,append=T)
 }
 
-res1<-read.table("hal5000_em1cross.txt",header=F)
+res1<-read.table("hal5000_em3cross.txt",header=F)
 res1 <- na.omit(res1)
 head(res1)
 dim(res1)
