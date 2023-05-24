@@ -3,28 +3,27 @@
 #popsize set at 1500000, can increase in large ssize is needed
 #ssize set at 500, may have trouble when not enough patient available
 
-datagen<-function(seed=sample(1:1000000,size=1),ssize=2000,popsize=15000000,OR_C=3,OR_WI=1,OR_WC=5,OR_H=1.5,em=2,cfV0=F,cfV1=F,return_full=F){
+datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C=2,OR_WI=1,OR_WC=4,OR_H=1.5,em=1,cfV0=F,cfV1=F,return_full=F){
   set.seed(seed)
   #generate data
-  C<-rnorm(n=popsize)
+  C<- runif(n=popsize, -1,1)
   U1<-rbinom(n=popsize,size=1,prob=0.5) #affects both
   U2<-rbinom(n=popsize,size=1,prob=0.5) #affects covid
   
   if(cfV0==T) V=rep(0,popsize); if(cfV1==T) V=rep(1,popsize);
   if(cfV0==F&cfV1==F){
-    V<-rbinom(prob=plogis(0.5+0.3*C + C^2 + sin(C)),size=1,n=popsize) #prevalence is around 0.73
+    p = plogis(1 -  C - C^2 - 2 * sin(C))
+    V<-rbinom(prob=p,size=1,n=popsize) #prevalence is around 0.71
   }
-  #mean(V)
   #Infection (with something) has some common risk factors U1 and C
-  Infec<-rbinom(prob=plogis(0.5*C-5+0.5*U1),size=1,n=popsize) #current prevalence around 0.007
+  Infec<-rbinom(prob=plogis(0.5*C-3+0.5*U1),size=1,n=popsize) #current prevalence around 0.007
   
   #Infected with COVID
-  Infec_COVID<- rbinom(prob=plogis( -log(OR_C)*V -5 + C - C^3 - abs(C)+em*V*C+log(3)*U2*(1.5-V)-2*U1), size=1,n=popsize) #0.0120
-  #mean(Infec_COVID)
+  pcovid <- plogis( -log(OR_C)*V -2+ C - C^3 - abs(C)+em*V*C+log(3)*U2*(1.5-V)-2*U1)
   #symptoms based on infection
   #can come from either or both infections, if present
   W=rep(0,popsize)
-  W[Infec==1]<-rbinom(prob=plogis(-4+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
+  W[Infec==1]<-rbinom(prob=plogis(0.5+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
   W[Infec_COVID==1]<-rbinom(prob=plogis(-2+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
   #mean(W[Infec==1|Infec_COVID==1]) #9%
   #mean(W[Infec_COVID==1]) #27%
