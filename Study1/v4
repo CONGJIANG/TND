@@ -234,8 +234,8 @@ mod_IPW <- function(TNDdat, res){
   est.ipw <- exp(modY.ipw$coefficients[2])
   se.ipw <- sqrt(vcovHC(modY.ipw)[2,2])
   
-  CI_l <- est.ipw *exp(- 1.96 * se.ipw )
-  CI_u <- est.ipw *exp( 1.96 * se.ipw )
+  CI_l <- est.ipw *exp(- 1.96 * se.ipw/sqrt(nrow(TNDdat)) )
+  CI_u <- est.ipw *exp( 1.96 * se.ipw/sqrt(nrow(TNDdat)) )
   return(list(est = est.ipw, se = se.ipw, CI =  c(CI_l, CI_u)))
 }
 
@@ -243,16 +243,16 @@ mod_IPW(TNDdat, res)
 
 mod_EIF2 <- function(TNDdat, res){
   # proposed eif estimator 2: SAME as the previous method, i.e.,eif
-  A.1 <- (1 - TNDdat$Y)*(TNDdat$V - res$g1)/(res$g1* (1 -res$mu1))
-  A.0 <- (1 - TNDdat$Y)*((1-TNDdat$V) - res$g0)/(res$g0* (1 - res$mu0))
+  A.1 <- ((1 - TNDdat$Y)*(TNDdat$V - res$g1))/(res$g1* (1 -res$mu1))
+  A.0 <- ((1 - TNDdat$Y)*((1-TNDdat$V) - res$g0))/(res$g0* (1 - res$mu0))
   psi.1 <- mean(TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)
   psi.0 <- mean(TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)
   mod_eif2 <- psi.1/psi.0
   eifln <-  (TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)/psi.1 - (TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)/ psi.0
   varln <-  var(eifln)/nrow(TNDdat)
   
-  CI_l1 <- mod_eif2 *exp(- 1.96 * sqrt(varln) )
-  CI_u1 <- mod_eif2 *exp( 1.96 * sqrt(varln) )
+  CI_l1 <- exp(log(mod_eif2) - 1.96 * sqrt(varln) )
+  CI_u1 <- exp(log(mod_eif2) + 1.96 * sqrt(varln) )
   
   eifpsi <- (TNDdat$Y*TNDdat$V/res$g1 - res$mu1*A.1)/psi.0 - (psi.1/psi.0)*(TNDdat$Y*(1-TNDdat$V)/res$g0 - res$mu0*A.0)/psi.0
   var <- var(eifpsi)/nrow(TNDdat)
@@ -295,15 +295,13 @@ for (i in 1:1200){
   write(c(i,est1,CI1,est2,est3,CI3,CI4,se1, varln, var),file="newVhal5000_em1cross.txt",ncolumns=30,append=T)
 }
 
-res1<-read.table("hal5000_em3cross.txt",header=F)
+res1<-read.table("newVhal5000_em1cross.txt",header=F)
 res1 <- na.omit(res1)
 head(res1)
 dim(res1)
 colnames(res1)[c(1, 2, 5, 6, 11, 12, 13)] <- c("i", "IPW", "out-Out", "EIF", "se1","varln","var")
 summary(res1, na.rm = FALSE)
-(s <- which(res1$IPW == Inf))
-res1 <- res1[-s,]
-mRR.em1 = 0.044
+mRR.em1 = 0.04244576
 apply(res1, 2, mean) - mRR.em1
 apply(res1, 2, median) - mRR.em1
 apply(res1, 2, sd)
