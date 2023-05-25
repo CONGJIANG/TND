@@ -7,7 +7,7 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C
   
   if(cfV0==T) V=rep(0,popsize); if(cfV1==T) V=rep(1,popsize);
   if(cfV0==F&cfV1==F){
-    p = plogis(1 -  C - C^2 - 2 * sin(C))
+    p = plogis(1.5 -  C - C^2 - 2 * sin(C))
     V<-rbinom(prob=p,size=1,n=popsize) #prevalence is around 0.71
   }
   #Infection (with something) has some common risk factors U1 and C
@@ -15,11 +15,12 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C
   
   #Infected with COVID
   pcovid <- plogis( -log(OR_C)*V -2+ C - C^3 - abs(C)+em*V*C+log(3)*U2*(1.5-V)-2*U1)
+  Infec_COVID<- rbinom(prob= pcovid, size=1,n=popsize)
   #symptoms based on infection
   #can come from either or both infections, if present
   W=rep(0,popsize)
-  W[Infec==1]<-rbinom(prob=plogis(0.5+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
-  W[Infec_COVID==1]<-rbinom(prob=plogis(-2+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
+  W[Infec==1]<-rbinom(prob=plogis(1+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
+  W[Infec_COVID==1]<-rbinom(prob=plogis(-2.5+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
   #mean(W[Infec==1|Infec_COVID==1]) #9%
   #mean(W[Infec_COVID==1]) #27%
   #mean(W[Infec==1]) #2%
