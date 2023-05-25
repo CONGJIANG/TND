@@ -1,4 +1,8 @@
-datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C=2,OR_WI=1,OR_WC=4,OR_H=1.5,em=1,cfV0=F,cfV1=F,return_full=F){
+#Common data-generating function
+
+#popsize set at 1500000, can increase in large ssize is needed
+#ssize set at 500, may have trouble when not enough patient available
+datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C=2,OR_WI=1,OR_WC=2,OR_H=1.5,em=1,cfV0=F,cfV1=F,return_full=F){
   set.seed(seed)
   #generate data
   C<- runif(n=popsize, -1,1)
@@ -19,7 +23,7 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C
   #symptoms based on infection
   #can come from either or both infections, if present
   W=rep(0,popsize)
-  W[Infec==1]<-rbinom(prob=plogis(1+0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
+  W[Infec==1]<-rbinom(prob=plogis(1.5 +0.5*C[Infec==1]-log(OR_WI)*V[Infec==1]-0.5*U1[Infec==1]),size=1, n=sum(Infec==1))
   W[Infec_COVID==1]<-rbinom(prob=plogis(-2.5+1*C[Infec_COVID==1]-log(OR_WC)*V[Infec_COVID==1]-1*U1[Infec_COVID==1]+0.5*U2[Infec_COVID==1]*(1-V[Infec_COVID==1])),size=1, n=sum(Infec_COVID))
   #mean(W[Infec==1|Infec_COVID==1]) #9%
   #mean(W[Infec_COVID==1]) #27%
@@ -42,3 +46,32 @@ datagen<-function(seed=sample(1:1000000,size=1),ssize=5000,popsize=15000000,OR_C
 
 TNDdat = datagen(ssize=5000, em=1)
 sum(TNDdat$Y)/ssize
+#true marginal RR
+orvect<-rep(NA,50)
+for (j in 1:50){
+  datfull1<-datagen(cfV1=T,return_full=T)
+  datfull0<-datagen(cfV0=T,return_full=T)
+  orvect[j]<-mean(datfull1$H*datfull1$Infec_COVID)/mean(datfull0$H*datfull0$Infec_COVID)
+}
+(psi = mean(orvect)) #2000, em = 1, 0.04230757; em = 2 0.07174366, em = 3, 0.1597932;
+hist(orvect)
+
+#true marginal RR for Infec_COVID
+orvect1<-rep(NA,50)
+for (j in 1:50){
+  datfull1<-datagen(cfV1=T,return_full=T)
+  datfull0<-datagen(cfV0=T,return_full=T)
+  orvect1[j]<-mean(datfull1$Infec_COVID)/mean(datfull0$Infec_COVID)
+}
+mean(orvect1) #0.16
+hist(orvect1)
+
+#true marginal RR for Infec_COVID * W (severe COVID disease)
+orvect2<-rep(NA,50)
+for (j in 1:50){
+  datfull1<-datagen(cfV1=T,return_full=T)
+  datfull0<-datagen(cfV0=T,return_full=T)
+  orvect2[j]<-mean(datfull1$W*datfull1$Infec_COVID)/mean(datfull0$W*datfull0$Infec_COVID)
+}
+mean(orvect2) #0.04
+hist(orvect2)
