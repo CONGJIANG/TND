@@ -320,7 +320,7 @@ head(res1)
 dim(res1)
 colnames(res1)[c(1, 2, 5, 6, 7, 10, 13)] <- c("i", "IPW", "out-Out", "out-PS", "EIF-out", "EIF-ps","EIF")
 summary(res1, na.rm = FALSE)
-mRR.em1 = 0.1660547
+mRR.em1 = 0.166
 apply(res1, 2, mean) - mRR.em1
 apply(res1, 2, median) - mRR.em1
 apply(res1, 2, sd)
@@ -329,8 +329,10 @@ apply(res1, 2, sd)
 #CIs
 psi = mRR.em1
 mean(psi<=res1$V4 & psi>=res1$V3) #
-mean(psi<=res1$V8 & psi>=res1$V7) #
-mean(psi<=res1$V10 & psi>=res1$V9)
+mean(psi<=res1$V9 & psi>=res1$V8) #
+mean(psi<=res1$V12 & psi>=res1$V11)
+mean(psi<=res1$V15 & psi>=res1$V14)
+mean(psi<=res1$V17 & psi>=res1$V16)
 
 res1<-read.table("TNDStudy1earth2000_em2cross.txt",header=F)
 res1 <- na.omit(res1)
