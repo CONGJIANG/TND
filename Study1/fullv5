@@ -278,7 +278,7 @@ mod_OutReg<- function(TNDdat, res){
 mod_OutReg(TNDdat, res)
 library(hal9001)
 for (i in 1:1000){
-  TNDdat = datagen(ssize=5000, em=1)
+  TNDdat = datagen(ssize=1000, em=1)
   res <- element(TNDdat)
   #######################################################
   #IPW with controls to fit g
@@ -311,18 +311,19 @@ for (i in 1:1000){
   var <- est.6$var
   CI6<- est.6$CI1
   CI7<- est.6$CI2
-  write(c(i,est1,CI1,est2,est3, est4, CI4,est5, CI5, est6, CI6, CI7, se1, OUTvarln, OUTvar, PSvarln, PSvar, varln, var),file="FULLhal5000_em1cross.txt",ncolumns=50,append=T)
+  write(c(i,est1,CI1,est2,est3, est4, CI4,est5, CI5, est6, CI6, CI7, se1, OUTvarln, OUTvar, PSvarln, PSvar, varln, var),file="FULLhal1000_em1cross.txt",ncolumns=50,append=T)
 }
 
-res1<-read.table("Fullhal5000_em1cross.txt",header=F)
+res1<-read.table("Fullhal1000_em1cross.txt",header=F)
 res1 <- na.omit(res1)
 head(res1)
 dim(res1)
-colnames(res1)[c(1, 2, 5, 6, 7, 10, 13)] <- c("i", "IPW", "out-Out", "out-PS", "EIF-out", "EIF-ps","EIF")
+colnames(res1)[c(1, 2, 5, 6, 7, 10, 13, 18, 23,24)] <- c("i", "IPW", "out-Out", "out-PS", "EIF-out", "EIF-ps","EIF", "Var-ipw","Varln-EIF","Var-EIF")
 summary(res1, na.rm = FALSE)
 mRR.em1 = 0.166
 apply(res1, 2, mean) - mRR.em1
 apply(res1, 2, median) - mRR.em1
+apply(res1, 2, mean)
 apply(res1, 2, sd)
 
 
