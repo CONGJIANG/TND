@@ -1,0 +1,55 @@
+set.seed(12345)
+N <- 5000
+TndDAT <- datagen(ssize = N, em = 1)
+sum(TndDAT$Y)/N
+# Define the sample size
+n <- seq(100, N, by = 100)
+
+# Define an empty vector to store the estimated means
+estIPW_vec <- rep(NA, length(n))
+estOR_vec <- rep(NA, length(n))
+estEIF_vec <- rep(NA, length(n))
+estEIF2_vec <- rep(NA, length(n))
+# Compute the estimated means for different sample sizes
+for (i in 1:length(n)) {
+  #datind <- sample(1:N, size = n[i])
+  TNDdat <- TndDAT[1:n[i], ]
+  res <- element(TNDdat)
+  #######################################################
+  #IPW with controls to fit g
+  est.1<-mod_IPW(TNDdat, res)
+  estIPW_vec[i] <- est.1$est
+  
+  estOR_vec[i] <-mod_OutReg(TNDdat, res)$est1
+  
+  est.2 <- mod_EIF2(TNDdat, res)
+  estEIF_vec[i] <- est.2$est
+}
+
+mRR.em3 = 0.159513;
+mRR.em1 = 0.04363
+mRR.em2 = 0.2837254 # 0.5 em
+
+
+# Compute the root-n scaled biases
+bias.ipw <- (estIPW_vec - mRR.em2) / sqrt(n)
+bias.or <- (estOR_vec - mRR.em2) / sqrt(n)
+bias.eif <- (estEIF_vec - mRR.em2) / sqrt(n)
+#bias.eif2 <- (estEIF2_vec - mRR.em2) / sqrt(n)
+
+res <- as.data.frame(cbind(n = n, bias.ipw = bias.ipw,bias.or = bias.or, bias.eif = bias.eif))
+res <- na.omit(res)
+# Plot the root-n scaled biases as a function of sample size
+plot(res$n, res$bias.eif , type = "b", pch = 19, col = "red",
+     xlab = "Sample size (n)", ylab = "Root-n scaled bias", ylim = c(-0.04, 0.04))
+lines(res$n, res$bias.or, type = "b",pch = 4, col = "blue")
+lines(res$n, res$bias.ipw, type = "b", pch = 2, col = "black")
+#lines(res$n, 1/sqrt(res$n), type = "b",pch = 0,  col = "brown")
+#lines(res$n, res$bias.eif, type = "b", pch = 2, col = "black")
+abline(h = 0, lty = 2)
+legend("bottomright", legend = c("IPW","EIF", "OutReg"), pch = c(2, 19, 4), col = c("black","red", "blue"), lty = 1)
+title("Root-n Consistency of Proposed Estimators for mRR (em = 0.5)")
+#legend("bottomright", legend = c("IPW","EIF", "OutReg", expression(1/sqrt(n))), pch = c(2, 19, 4,0), col = c("black","red", "blue","brown" ), lty = 1)
+#title("Root-n Consistency of Proposed Estimators for mRR (em = 1)")
+write.csv(res,file="TNDStudy1halrootnV2em050622.csv")
+res <- read.csv("TNDStudy1halrootnV2em2.csv")
