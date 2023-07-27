@@ -430,7 +430,7 @@ modEIF2d<-function(dat){
 
 CI1=CI2=CI3=CI3.2=CI4=CI4.2=CI5=CI5.2=CI6=CI6.2=CI7=CI7.2=CI8=CI8.2=CI9=CI9.2=CI10=CI10.2=CI11 = CI12 = c(0,0)
 
-for (i in 1:500){
+for (i in 1:1000){
   dat<-datagen(ssize=500, em=0)
   #######################################################
   # Marginal RR 
